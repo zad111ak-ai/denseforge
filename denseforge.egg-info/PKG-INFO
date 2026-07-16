@@ -1,0 +1,45 @@
+Metadata-Version: 2.4
+Name: denseforge
+Version: 1.0.0
+Summary: Autonomous Cognitive Knowledge Platform — SOTA RAG + Agents + Causal Reasoning
+Author: DenseForge Team
+License: MIT
+Keywords: rag,llm,ai,knowledge,agents,retrieval
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: numpy>=1.24.0
+Requires-Dist: faiss-cpu>=1.7.4
+Requires-Dist: tiktoken>=0.5.0
+Requires-Dist: sentence-transformers>=2.7.0
+Requires-Dist: rank-bm25>=0.2.2
+Requires-Dist: scipy>=1.11.0
+Requires-Dist: networkx>=3.2
+Requires-Dist: pydantic>=2.5.0
+Requires-Dist: loguru>=0.7.0
+Requires-Dist: aiohttp>=3.9.0
+Requires-Dist: httpx>=0.25.0
+Requires-Dist: tenacity>=8.2.0
+Requires-Dist: tqdm>=4.66.0
+Provides-Extra: gpu
+Requires-Dist: torch>=2.1.0; extra == "gpu"
+Requires-Dist: faiss-gpu>=1.7.2; extra == "gpu"
+Provides-Extra: models
+Requires-Dist: transformers>=4.40.0; extra == "models"
+Requires-Dist: accelerate>=0.28.0; extra == "models"
+Provides-Extra: enterprise
+Requires-Dist: opentelemetry-api>=1.20.0; extra == "enterprise"
+Requires-Dist: opentelemetry-sdk>=1.20.0; extra == "enterprise"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+Requires-Dist: ruff>=0.3.0; extra == "dev"
+Provides-Extra: all
+Requires-Dist: denseforge[dev,enterprise,gpu,models]; extra == "all"
