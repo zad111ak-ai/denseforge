@@ -336,7 +336,6 @@ If DenseForge helps your project, consider supporting development:
 - **ETH:** `0xD26f0efE6A8F11e127c3Af3D6163BD458a1693c3`
 - **USDT (TON):** `UQAoI2i8P9-JeZhvGSUwKnymVyY5cb-1Rg7pdqoWMNena7DP`
 - **SOL:** `99EtqBVTeF5UNp9a1oPi18iVXbXptTG7YQ6JeJvXMUJK`
-- **X/Twitter:** [@JosephPost2](https://x.com/JosephPost2)
 
 ---
 
