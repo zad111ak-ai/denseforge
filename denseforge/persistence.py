@@ -78,6 +78,16 @@ def save_forge(forge, path: str | Path) -> dict:
             raptor_data.append(entry)
     (path / "raptor.json").write_text(json.dumps(raptor_data, ensure_ascii=False))
 
+    # 7. Dedup state (v13.0)
+    if hasattr(forge, 'deduplicator') and forge.deduplicator is not None:
+        (path / "dedup.json").write_text(
+            json.dumps(forge.deduplicator.save_state())
+        )
+
+    # 8. Columnar metadata (v13.0)
+    if hasattr(forge, 'columnar_meta') and forge.columnar_meta is not None:
+        forge.columnar_meta.save(str(path / "columnar.json"))
+
     elapsed = time.perf_counter() - t0
     n_docs = len(forge.triple_store.documents)
     logger.info("Saved DenseForge: {} docs → {} ({:.2f}s)", n_docs, path, elapsed)
@@ -153,6 +163,22 @@ def load_forge(forge, path: str | Path) -> dict:
                     node["children"] = entry["children"]
                 forge.raptor.levels[level].append(node)
                 forge.raptor._doc_count = max(forge.raptor._doc_count, entry["doc_id"] + 1)
+
+    # 7. Dedup state (v13.0)
+    dedup_file = path / "dedup.json"
+    if dedup_file.exists():
+        from denseforge.ingestion.dedup import SemanticDeduplicator
+        if not hasattr(forge, 'deduplicator') or forge.deduplicator is None:
+            forge.deduplicator = SemanticDeduplicator()
+        forge.deduplicator.load_state(json.loads(dedup_file.read_text()))
+
+    # 8. Columnar metadata (v13.0)
+    col_file = path / "columnar.json"
+    if col_file.exists():
+        from denseforge.ingestion.columnar import ColumnarMetadata
+        if not hasattr(forge, 'columnar_meta') or forge.columnar_meta is None:
+            forge.columnar_meta = ColumnarMetadata()
+        forge.columnar_meta.load(str(col_file))
 
     elapsed = time.perf_counter() - t0
     n_docs = len(forge.triple_store.documents)

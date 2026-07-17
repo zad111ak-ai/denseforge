@@ -64,15 +64,31 @@ class DenseForge:
         self._total_ingest_time = 0.0
         self._total_query_time = 0.0
 
+        # v13.0: Semantic dedup + columnar metadata
+        from denseforge.ingestion.dedup import SemanticDeduplicator
+        from denseforge.ingestion.columnar import ColumnarMetadata
+        self.deduplicator = SemanticDeduplicator()
+        self.columnar_meta = ColumnarMetadata()
+
     # ------------------------------------------------------------------
     # Ingestion
     # ------------------------------------------------------------------
     def ingest(self, text: str, title: str = "", metadata: dict | None = None) -> list[int]:
         """Chunk, augment, embed, and index a document."""
+        import hashlib
         t0 = time.perf_counter()
         meta = metadata or {}
         if title:
             meta["title"] = title
+
+        # v13.0: Semantic deduplication
+        if hasattr(self, 'deduplicator') and self.deduplicator is not None:
+            content_hash = hashlib.sha256(text.strip().lower().encode()).hexdigest()[:16]
+            if content_hash in self.deduplicator._hashes:
+                logger.info("Dedup: skipping exact duplicate (hash={})", content_hash[:8])
+                return []
+            # Add to dedup tracker
+            self.deduplicator.add(f"doc_{self._doc_counter}", text)
 
         chunks = self.chunker.split(text, title=meta.get("title", ""))
         augmented = self.augmenter.augment(chunks)
@@ -96,6 +112,16 @@ class DenseForge:
             doc_id = f"doc_{self._doc_counter}"
             self.hippo.index_document(chunk_text, doc_id)
             self._doc_counter += 1
+
+        # v13.0: Columnar metadata tracking
+        import time as _time
+        self.columnar_meta.add(
+            doc_id=f"batch_{self._doc_counter}",
+            timestamp=int(_time.time()),
+            source=meta.get("source", ""),
+            title_hash=hash(text[:64]) if text else 0,
+            embedding_hash=hash(embeddings[0].tobytes()) if len(embeddings) > 0 else 0,
+        )
 
         elapsed = time.perf_counter() - t0
         self._total_ingest_time += elapsed
