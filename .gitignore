@@ -8,3 +8,6 @@ build/
 denseforge_data/
 cache/
 *.egg
+*.pyc
+egg-info/
+*.pt
