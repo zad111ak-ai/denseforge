@@ -117,17 +117,22 @@ class TripleHybridStore:
         ]
 
     def _fuse_scores(self, channel_scores, channels):
+        """Reciprocal Rank Fusion (RRF) — combines ranks, not raw scores.
+
+        RRF is robust to score magnitude differences between channels.
+        Score = sum(1 / (k + rank)) for each channel where document appears.
+        Default k=60 is standard from the original RRF paper.
+        """
         fused = defaultdict(float)
+        k = 60  # RRF constant (original paper: k=60)
         for ch in channels:
             scores = channel_scores.get(ch, {})
             if not scores:
                 continue
-            vals = list(scores.values())
-            min_s, max_s = min(vals), max(vals)
-            rng = max_s - min_s if max_s > min_s else 1.0
-            weight = self.fusion_weights.get(ch, 0.33)
-            for doc_id, score in scores.items():
-                fused[doc_id] += weight * (score - min_s) / rng
+            # Sort by score descending, assign ranks
+            sorted_docs = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+            for rank, (doc_id, _) in enumerate(sorted_docs):
+                fused[doc_id] += 1.0 / (k + rank + 1)
         return dict(fused)
 
     def _tokenize(self, text: str) -> list[str]:

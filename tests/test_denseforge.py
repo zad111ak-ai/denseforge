@@ -297,3 +297,76 @@ class TestLateChunking:
         result = lc.split("Short text.")
         assert len(result) >= 1
         assert "text" in result[0]
+
+
+# ── Retrieval: RRF Fusion ────────────────────────────────────────────────
+
+class TestRRFFusion:
+    """Test Reciprocal Rank Fusion in TripleHybridStore."""
+
+    def test_rrf_prefers_top_ranked(self):
+        """RRF should prefer documents ranked #1 across multiple channels."""
+        from denseforge.retrieval.triple_hybrid import TripleHybridStore
+        store = TripleHybridStore(dim=128, binary_dim=128)
+
+        # Simulate channel scores where doc 0 is #1 in all channels
+        channel_scores = {
+            "bm25": {0: 10.0, 1: 5.0, 2: 1.0},
+            "dense": {0: 0.9, 1: 0.7, 2: 0.5},
+            "binary": {0: 0.8, 1: 0.6, 2: 0.4},
+        }
+        fused = store._fuse_scores(channel_scores, ["bm25", "dense", "binary"])
+
+        # Doc 0 should be first (ranked #1 in all channels)
+        ranked = sorted(fused.items(), key=lambda x: x[1], reverse=True)
+        assert ranked[0][0] == 0, f"Expected doc 0 first, got doc {ranked[0][0]}"
+
+    def test_rrf_handles_missing_channels(self):
+        """RRF should work when a channel has no scores for some docs."""
+        from denseforge.retrieval.triple_hybrid import TripleHybridStore
+        store = TripleHybridStore(dim=128, binary_dim=128)
+
+        channel_scores = {
+            "bm25": {0: 10.0, 1: 5.0},
+            "dense": {0: 0.9, 2: 0.5},  # doc 1 missing from dense
+        }
+        fused = store._fuse_scores(channel_scores, ["bm25", "dense"])
+
+        # Doc 0 should be first (ranked #1 in both channels)
+        ranked = sorted(fused.items(), key=lambda x: x[1], reverse=True)
+        assert ranked[0][0] == 0
+
+    def test_rrf_empty_channels(self):
+        """RRF should return empty dict for empty input."""
+        from denseforge.retrieval.triple_hybrid import TripleHybridStore
+        store = TripleHybridStore(dim=128, binary_dim=128)
+
+        fused = store._fuse_scores({}, ["bm25", "dense"])
+        assert fused == {}
+
+    def test_rrf_single_channel(self):
+        """RRF should work with single channel."""
+        from denseforge.retrieval.triple_hybrid import TripleHybridStore
+        store = TripleHybridStore(dim=128, binary_dim=128)
+
+        channel_scores = {
+            "bm25": {0: 10.0, 1: 5.0, 2: 1.0},
+        }
+        fused = store._fuse_scores(channel_scores, ["bm25"])
+
+        ranked = sorted(fused.items(), key=lambda x: x[1], reverse=True)
+        assert ranked[0][0] == 0  # Highest BM25 score = rank #1
+
+    def test_rrf_scores_are_positive(self):
+        """RRF scores should always be positive."""
+        from denseforge.retrieval.triple_hybrid import TripleHybridStore
+        store = TripleHybridStore(dim=128, binary_dim=128)
+
+        channel_scores = {
+            "bm25": {0: 10.0, 1: 5.0},
+            "dense": {0: 0.9, 1: 0.7},
+        }
+        fused = store._fuse_scores(channel_scores, ["bm25", "dense"])
+
+        for doc_id, score in fused.items():
+            assert score > 0, f"Score for doc {doc_id} should be positive, got {score}"
