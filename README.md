@@ -10,6 +10,7 @@
   <a href="https://pypi.org/project/denseforge/"><img src="https://img.shields.io/pypi/v/denseforge" alt="PyPI"></a>
   <img src="https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python" alt="Python 3.10+">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
+  <a href="https://github.com/sponsors/zad111ak-ai"><img src="https://img.shields.io/badge/💰_Sponsor-GitHub-ea4aaa" alt="Sponsor"></a>
 </p>
 
 ---
@@ -179,14 +180,26 @@ MIT License
 
 ---
 
-## ☕ Support
+## ❤️ Support This Project
 
-If DenseForge saves you time/money, consider buying me a coffee:
+If DenseForge saves you time or money, consider supporting development:
 
-- **BTC:** `bc1qd8sa7e4f696wmcyszuxh9snqt2n66zrhz9g80j`
-- **ETH:** `0xD26f0efE6A8F11e127c3Af3D6163BD458a1693c3`
-- **USDT (TON):** `UQAoI2i8P9-JeZhvGSUwKnymVyY5cb-1Rg7pdqoWMNena7DP`
-- **SOL:** `99EtqBVTeF5UNp9a1oPi18iVXbXptTG7YQ6JeJvXMUJK`
+<p align="center">
+  <a href="https://github.com/sponsors/zad111ak-ai"><img src="https://img.shields.io/badge/⭐_GitHub_Sponsors-ea4aaa?style=for-the-badge&logo=github" alt="GitHub Sponsors"></a>
+</p>
+
+### 🪙 Crypto Donations
+
+| Currency | Address |
+|----------|---------|
+| **BTC** | `bc1qd8sa7e4f696wmcyszuxh9snqt2n66zrhz9g80j` |
+| **ETH** | `0xD26f0efE6A8F11e127c3Af3D6163BD458a1693c3` |
+| **USDT (TON)** | `UQAoI2i8P9-JeZhvGSUwKnymVyY5cb-1Rg7pdqoWMNena7DP` |
+| **SOL** | `99EtqBVTeF5UNp9a1oPi18iVXbXptTG7YQ6JeJvXMUJK` |
+
+<p align="center">
+  <em>Every donation helps build better tools for AI agents! 🙏</em>
+</p>
 
 ---
 
