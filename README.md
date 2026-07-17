@@ -10,6 +10,10 @@
   <a href="https://pypi.org/project/denseforge/"><img src="https://img.shields.io/pypi/v/denseforge" alt="PyPI"></a>
   <img src="https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python" alt="Python 3.10+">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
+  <a href="bitcoin:bc1qd8sa7e4f696wmcyszuxh9snqt2n66zrhz9g80j"><img src="https://img.shields.io/badge/BTC-bc1qd8sa7e-FF9900?logo=bitcoin&logoColor=white" alt="BTC"></a>
+  <a href="ethereum:0xD26f0efE6A8F11e127c3Af3D6163BD458a1693c3"><img src="https://img.shields.io/badge/ETH-0xD26f0efE-627EEA?logo=ethereum&logoColor=white" alt="ETH"></a>
+  <a href="https://tonkeeper.com"><img src="https://img.shields.io/badge/USDT_%28TON%29-UQ...DP-26A17B?logo=tether&logoColor=white" alt="USDT TON"></a>
+  <a href="https://phantom.app"><img src="https://img.shields.io/badge/SOL-99EtqBV...JK-9945FF?logo=solana&logoColor=white" alt="SOL"></a>
 </p>
 
 DenseForge is a **local semantic memory platform** for AI agents. It stores text, finds relevant context, and returns it with source citations — like a search engine built specifically for LLM conversations.
