@@ -4,6 +4,7 @@ import numpy as np
 from typing import Optional
 from collections import defaultdict
 from dataclasses import dataclass, field
+from loguru import logger
 
 
 @dataclass
@@ -71,43 +72,69 @@ class TripleHybridStore:
     def search(self, query: str, query_embedding: np.ndarray,
                query_full: Optional[np.ndarray] = None,
                top_k: int = 10, channels: Optional[list[str]] = None) -> list[dict]:
+        """Search with triple hybrid retrieval (BM25 + Dense + Binary).
+        
+        Args:
+            query: Search query text
+            query_embedding: Dense embedding vector
+            query_full: Full-dim embedding for binary search
+            top_k: Number of results to return
+            channels: Which channels to use (bm25, dense, binary)
+            
+        Returns:
+            List of search results with scores and metadata
+        """
         if not self.documents:
             return []
+        
         channels = channels or ["bm25", "dense", "binary"]
         n = len(self.documents)
         candidate_k = min(top_k * 3, n)
         channel_scores: dict[str, dict[int, float]] = {}
-
+        
+        # BM25 scoring
         if "bm25" in channels and self._bm25:
-            query_tokens = self._tokenize(query)
-            bm25_scores = self._bm25.get_scores(query_tokens)
-            channel_scores["bm25"] = {i: float(s) for i, s in enumerate(bm25_scores) if s > 0}
-
+            try:
+                query_tokens = self._tokenize(query)
+                bm25_scores = self._bm25.get_scores(query_tokens)
+                channel_scores["bm25"] = {i: float(s) for i, s in enumerate(bm25_scores) if s > 0}
+            except Exception as e:
+                logger.warning(f"BM25 scoring failed: {e}")
+        
+        # Dense scoring (FAISS)
         if "dense" in channels and self._has_faiss:
-            q = query_embedding.astype(np.float32).reshape(1, -1)
-            D, I = self.dense_index.search(q, candidate_k)
-            channel_scores["dense"] = {
-                int(I[0][i]): float(D[0][i]) for i in range(len(I[0])) if I[0][i] != -1
-            }
-
+            try:
+                q = query_embedding.astype(np.float32).reshape(1, -1)
+                D, I = self.dense_index.search(q, candidate_k)
+                channel_scores["dense"] = {
+                    int(I[0][i]): float(D[0][i]) for i in range(len(I[0])) if I[0][i] != -1
+                }
+            except Exception as e:
+                logger.warning(f"Dense search failed: {e}")
+        
+        # Binary scoring
         if "binary" in channels and self._has_faiss and n >= 3:
-            # Use query_full (768-dim) for binary search if available
-            q_for_binary = query_full if query_full is not None else query_embedding
-            # Pack: threshold → packbits (same as embedder)
-            q_bin = (q_for_binary[:768] > 0).astype(np.uint8) if len(q_for_binary) >= 768 else (q_for_binary > 0).astype(np.uint8)
-            q_bin_packed = np.packbits(q_bin).reshape(1, -1)
-            D_bin, I_bin = self.binary_index.search(q_bin_packed, candidate_k * 2)
-            candidate_ids = [int(i) for i in I_bin[0] if i != -1 and i < n]
-            if candidate_ids:
-                rescore = {}
-                q_full_vec = query_embedding.astype(np.float32)
-                q_norm = q_full_vec / max(np.linalg.norm(q_full_vec), 1e-8)
-                for cid in candidate_ids:
-                    v = self._full_vectors[cid]
-                    v_norm = v / max(np.linalg.norm(v), 1e-8)
-                    rescore[cid] = float(np.dot(q_norm, v_norm))
-                channel_scores["binary"] = rescore
-
+            try:
+                # Use query_full (768-dim) for binary search if available
+                q_for_binary = query_full if query_full is not None else query_embedding
+                # Pack: threshold → packbits (same as embedder)
+                q_bin = (q_for_binary[:768] > 0).astype(np.uint8) if len(q_for_binary) >= 768 else (q_for_binary > 0).astype(np.uint8)
+                q_bin_packed = np.packbits(q_bin).reshape(1, -1)
+                D_bin, I_bin = self.binary_index.search(q_bin_packed, candidate_k * 2)
+                candidate_ids = [int(i) for i in I_bin[0] if i != -1 and i < n]
+                if candidate_ids:
+                    rescore = {}
+                    q_full_vec = query_embedding.astype(np.float32)
+                    q_norm = q_full_vec / max(np.linalg.norm(q_full_vec), 1e-8)
+                    for cid in candidate_ids:
+                        v = self._full_vectors[cid]
+                        v_norm = v / max(np.linalg.norm(v), 1e-8)
+                        rescore[cid] = float(np.dot(q_norm, v_norm))
+                    channel_scores["binary"] = rescore
+            except Exception as e:
+                logger.warning(f"Binary search failed: {e}")
+        
+        # Fuse scores with RRF
         fused = self._fuse_scores(channel_scores, channels)
         ranked = sorted(fused.items(), key=lambda x: x[1], reverse=True)[:top_k]
         return [

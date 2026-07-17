@@ -351,23 +351,27 @@ class DenseForge:
     # ------------------------------------------------------------------
     def stats(self) -> dict:
         """Return comprehensive stats for all subsystems."""
-        return {
-            "version": "1.0.0",
-            "ingested_documents": self._doc_counter,
-            "total_queries": self._query_counter,
-            "total_ingest_time_s": round(self._total_ingest_time, 3),
-            "total_query_time_s": round(self._total_query_time, 3),
-            "embedder": {
-                "model": self.embedder.model_name,
-                "full_dim": self.embedder.full_dim,
-            },
-            "triple_store": self.triple_store.stats(),
-            "raptor": self.raptor.stats(),
-            "hippo": self.hippo.stats(),
-            "cag": self.cag.stats(),
-            "cache": self.cache.stats(),
-            "streamer": self.streamer.stats(),
-        }
+        try:
+            return {
+                "version": "1.0.0",
+                "ingested_documents": self._doc_counter,
+                "total_queries": self._query_counter,
+                "total_ingest_time_s": round(self._total_ingest_time, 3),
+                "total_query_time_s": round(self._total_query_time, 3),
+                "embedder": {
+                    "model": self.embedder.model_name,
+                    "full_dim": self.embedder.full_dim,
+                },
+                "triple_store": self.triple_store.stats(),
+                "raptor": self.raptor.stats(),
+                "hippo": self.hippo.stats(),
+                "cag": self.cag.stats(),
+                "cache": self.cache.stats(),
+                "streamer": self.streamer.stats(),
+            }
+        except Exception as e:
+            logger.error(f"Failed to get stats: {e}")
+            return {"error": str(e)}
 
     def search(self, question: str, top_k: int | None = None,
                channels: list[str] | None = None) -> dict:
