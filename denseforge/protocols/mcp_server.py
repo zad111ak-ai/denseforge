@@ -1,7 +1,5 @@
 """MCP Server — Model Context Protocol integration."""
 import json
-from typing import Optional
-from loguru import logger
 
 
 class MCPServer:

@@ -119,7 +119,7 @@ class DocumentLimits:
         
         # Check total size
         if self._current_size + size_bytes > self.max_total_size_bytes:
-            return False, f"Total size limit would be exceeded"
+            return False, "Total size limit would be exceeded"
         
         # Check individual document size
         if size_bytes > self.max_document_size_bytes:

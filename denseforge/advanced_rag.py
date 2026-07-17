@@ -394,7 +394,6 @@ class AdaptiveRouter:
         
         # Choose best strategy
         best_strategy = max(scores, key=scores.get)
-        best_score = scores[best_strategy]
         
         # Map to enum
         strategy_map = {

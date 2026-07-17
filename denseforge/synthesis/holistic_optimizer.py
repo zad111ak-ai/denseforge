@@ -70,8 +70,10 @@ class HolisticCostOptimizer:
             expected = feedback.get(f"expected_{dim}", 0)
             if expected > 0:
                 ratio = actual / expected
-                if ratio > 1.2: self.budget[dim] *= 1.1
-                elif ratio < 0.7: self.budget[dim] *= 0.95
+                if ratio > 1.2:
+                    self.budget[dim] *= 1.1
+                elif ratio < 0.7:
+                    self.budget[dim] *= 0.95
 
     def stats(self) -> dict:
         return {"budget": self.budget}

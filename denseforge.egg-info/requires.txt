@@ -11,6 +11,7 @@ aiohttp>=3.9.0
 httpx>=0.25.0
 tenacity>=8.2.0
 tqdm>=4.66.0
+mcp>=1.0
 
 [all]
 denseforge[dev,enterprise,gpu,models]

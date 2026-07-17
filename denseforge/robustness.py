@@ -488,7 +488,7 @@ class RobustnessManager:
         
         # 2. Detect injection
         if self.validator.detect_injection(validated_text):
-            logger.warning(f"Potential injection detected in text")
+            logger.warning("Potential injection detected in text")
             return {
                 "success": False,
                 "error": "Potential injection detected",

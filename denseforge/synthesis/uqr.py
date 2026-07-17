@@ -129,16 +129,24 @@ class UQRBuilder:
 
     def _complexity_score(self, features: dict) -> float:
         score = 0.3
-        if features["causal"]: score += 0.25
-        if features["comparison"]: score += 0.2
-        if features["temporal"]: score += 0.1
-        if features["length"] > 20: score += 0.15
+        if features["causal"]:
+            score += 0.25
+        if features["comparison"]:
+            score += 0.2
+        if features["temporal"]:
+            score += 0.1
+        if features["length"] > 20:
+            score += 0.15
         return min(score, 1.0)
 
     def _predict_resources(self, intent: str, features: dict) -> tuple[float, int]:
         base_cost, base_lat = self.INTENT_PROFILES.get(intent, (0.1, 300))
-        if features["causal"]: base_cost *= 1.5; base_lat = int(base_lat * 1.5)
-        if features["comparison"]: base_cost *= 1.3; base_lat = int(base_lat * 1.3)
+        if features["causal"]:
+            base_cost *= 1.5
+            base_lat = int(base_lat * 1.5)
+        if features["comparison"]:
+            base_cost *= 1.3
+            base_lat = int(base_lat * 1.3)
         return base_cost, base_lat
 
     def _infer_urgency(self, query: str, features: dict) -> str:

@@ -34,7 +34,7 @@ class CarbonAwareScheduler:
             try:
                 import httpx
                 resp = httpx.get(
-                    f"https://api.electricitymap.org/v3/carbon-intensity",
+                    "https://api.electricitymap.org/v3/carbon-intensity",
                     params={"zone": self.region},
                     headers={"auth-token": self.carbon_api_key},
                     timeout=10,
