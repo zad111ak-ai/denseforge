@@ -1,5 +1,13 @@
-"""Triple Hybrid Store: BM25 + Dense HNSW + Binary Pre-filter."""
+"""Triple Hybrid Store: BM25 + Dense HNSW + Binary Pre-filter.
+
+Security fixes:
+- Added thread safety (threading.Lock)
+- Added input validation
+- Added memory limits
+- Added bounds checking
+"""
 import re
+import threading
 import numpy as np
 from typing import Optional
 from collections import defaultdict
@@ -16,11 +24,19 @@ class StoredDocument:
 
 
 class TripleHybridStore:
-    """BM25 + FAISS Dense + Binary index with RRF fusion."""
-
+    """BM25 + FAISS Dense + Binary index with RRF fusion.
+    
+    Thread-safe: all mutations are protected by a lock.
+    """
+    
+    # Safety limits
+    MAX_DOCUMENTS = 1_000_000
+    MAX_TEXT_LENGTH = 100_000
+    
     def __init__(self, dim: int = 512, binary_dim: int = 96):
         self.dim = dim
         self.documents: list[StoredDocument] = []
+        self._lock = threading.Lock()
 
         # Dense index (HNSW)
         try:
@@ -42,32 +58,59 @@ class TripleHybridStore:
 
     def add(self, text: str, augmented_text: str, embedding: np.ndarray,
             binary_vec: np.ndarray, metadata: dict | None = None) -> int:
-        doc_id = len(self.documents)
-        self.documents.append(StoredDocument(doc_id, text, augmented_text, metadata or {}))
-        emb = embedding.astype(np.float32).reshape(1, -1)
-        self._full_vectors.append(embedding.astype(np.float32))
+        """Add a document to the store (thread-safe)."""
+        # Input validation
+        if not text or not isinstance(text, str):
+            raise ValueError("text must be a non-empty string")
+        if len(text) > self.MAX_TEXT_LENGTH:
+            raise ValueError(f"text too long: {len(text)} > {self.MAX_TEXT_LENGTH}")
+        if not isinstance(embedding, np.ndarray):
+            raise ValueError("embedding must be a numpy array")
+        
+        with self._lock:
+            # Memory limit check
+            if len(self.documents) >= self.MAX_DOCUMENTS:
+                raise MemoryError(f"Document limit reached: {self.MAX_DOCUMENTS}")
+            
+            doc_id = len(self.documents)
+            self.documents.append(StoredDocument(doc_id, text, augmented_text, metadata or {}))
+            emb = embedding.astype(np.float32).reshape(1, -1)
+            self._full_vectors.append(embedding.astype(np.float32))
 
-        if self._has_faiss:
-            self.dense_index.add(emb)
-            self.binary_index.add(binary_vec.reshape(1, -1))
+            if self._has_faiss:
+                self.dense_index.add(emb)
+                self.binary_index.add(binary_vec.reshape(1, -1))
 
-        self._bm25_corpus.append(self._tokenize(augmented_text))
-        self._rebuild_bm25()
-        return doc_id
+            self._bm25_corpus.append(self._tokenize(augmented_text))
+            self._rebuild_bm25()
+            return doc_id
 
     def add_batch(self, texts, augmented_texts, embeddings, binary_vecs, metadatas=None):
+        """Add multiple documents (thread-safe)."""
         metadatas = metadatas or [{} for _ in texts]
-        start_id = len(self.documents)
-        for i, (text, aug, meta) in enumerate(zip(texts, augmented_texts, metadatas)):
-            self.documents.append(StoredDocument(start_id + i, text, aug, meta))
-            self._full_vectors.append(embeddings[i].astype(np.float32))
-            self._bm25_corpus.append(self._tokenize(aug))
-        if self._has_faiss:
-            self.dense_index.add(embeddings.astype(np.float32))
-            # Embedder already produces packed binary — pass directly
-            self.binary_index.add(binary_vecs)
-        self._rebuild_bm25()
-        return list(range(start_id, start_id + len(texts)))
+        
+        # Validate batch
+        if len(texts) == 0:
+            return []
+        if len(texts) != len(embeddings):
+            raise ValueError(f"texts and embeddings length mismatch: {len(texts)} vs {len(embeddings)}")
+        
+        with self._lock:
+            # Check memory limit
+            if len(self.documents) + len(texts) > self.MAX_DOCUMENTS:
+                raise MemoryError(f"Batch would exceed document limit: {len(self.documents) + len(texts)} > {self.MAX_DOCUMENTS}")
+            
+            start_id = len(self.documents)
+            for i, (text, aug, meta) in enumerate(zip(texts, augmented_texts, metadatas)):
+                self.documents.append(StoredDocument(start_id + i, text, aug, meta))
+                self._full_vectors.append(embeddings[i].astype(np.float32))
+                self._bm25_corpus.append(self._tokenize(aug))
+            if self._has_faiss:
+                self.dense_index.add(embeddings.astype(np.float32))
+                # Embedder already produces packed binary — pass directly
+                self.binary_index.add(binary_vecs)
+            self._rebuild_bm25()
+            return list(range(start_id, start_id + len(texts)))
 
     def search(self, query: str, query_embedding: np.ndarray,
                query_full: Optional[np.ndarray] = None,
@@ -84,6 +127,14 @@ class TripleHybridStore:
         Returns:
             List of search results with scores and metadata
         """
+        # Input validation
+        if not query or not isinstance(query, str):
+            return []
+        if not isinstance(query_embedding, np.ndarray):
+            return []
+        if top_k <= 0:
+            top_k = 1
+        
         if not self.documents:
             return []
         
