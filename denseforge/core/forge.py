@@ -253,3 +253,34 @@ class DenseForge:
     def load_cache(self):
         """Load the semantic cache from disk."""
         self.cache.load()
+
+    # ------------------------------------------------------------------
+    # Full persistence
+    # ------------------------------------------------------------------
+    def save(self, path: str | None = None) -> dict:
+        """Save entire state (FAISS + docs + metadata) to disk.
+
+        Args:
+            path: Directory path. Defaults to config.storage.persist_dir.
+        """
+        from denseforge.persistence import save_forge
+        target = path or getattr(self.config, "storage", None)
+        if target is None:
+            target = str(Path.home() / ".denseforge" / "data")
+        elif hasattr(target, "persist_dir"):
+            target = target.persist_dir
+        return save_forge(self, target)
+
+    def load(self, path: str | None = None) -> dict:
+        """Load state from disk.
+
+        Args:
+            path: Directory path. Defaults to config.storage.persist_dir.
+        """
+        from denseforge.persistence import load_forge
+        target = path or getattr(self.config, "storage", None)
+        if target is None:
+            target = str(Path.home() / ".denseforge" / "data")
+        elif hasattr(target, "persist_dir"):
+            target = target.persist_dir
+        return load_forge(self, target)
