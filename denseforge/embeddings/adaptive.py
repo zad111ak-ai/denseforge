@@ -2,6 +2,11 @@
 import numpy as np
 from typing import Optional
 from dataclasses import dataclass
+from threading import Lock
+
+# Global model cache — share across all AdaptiveEmbedder instances
+_MODEL_CACHE: dict[str, "SentenceTransformer"] = {}
+_MODEL_CACHE_LOCK = Lock()
 
 
 @dataclass
@@ -13,7 +18,10 @@ class EmbeddingResult:
 
 
 class AdaptiveEmbedder:
-    """Multi-resolution embeddings using Matryoshka representations."""
+    """Multi-resolution embeddings using Matryoshka representations.
+
+    Uses a global model cache to avoid reloading the same model across instances.
+    """
 
     MODEL_PROFILES = {
         "nomic-ai/nomic-embed-text-v1.5": {
@@ -45,11 +53,15 @@ class AdaptiveEmbedder:
     @property
     def model(self):
         if self._model is None:
-            from sentence_transformers import SentenceTransformer
-            self._model = SentenceTransformer(
-                self.model_name, device=self.device, trust_remote_code=True,
-            )
-            _ = self._model.encode(["warmup"], normalize_embeddings=True)
+            cache_key = f"{self.model_name}:{self.device}"
+            with _MODEL_CACHE_LOCK:
+                if cache_key not in _MODEL_CACHE:
+                    from sentence_transformers import SentenceTransformer
+                    _MODEL_CACHE[cache_key] = SentenceTransformer(
+                        self.model_name, device=self.device, trust_remote_code=True,
+                    )
+                    _ = _MODEL_CACHE[cache_key].encode(["warmup"], normalize_embeddings=True)
+                self._model = _MODEL_CACHE[cache_key]
         return self._model
 
     def encode(self, text: str, target_dim: Optional[int] = None, task: str = "retrieval") -> EmbeddingResult:

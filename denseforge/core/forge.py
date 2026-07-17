@@ -18,6 +18,7 @@ from denseforge.retrieval.cag import CAGEngine
 from denseforge.ingestion.chunking import LateChunker
 from denseforge.ingestion.augmentation import ContextualAugmenter
 from denseforge.ingestion.streaming import StreamingRAG
+from denseforge.retrieval.advanced import MetadataFilter, SentenceWindow, IncrementalManager
 
 
 class DenseForge:
@@ -57,6 +58,10 @@ class DenseForge:
         )
         self.hippo = HippoRAG()
         self.cag = CAGEngine()
+        
+        # Advanced retrieval features (from competitor analysis)
+        self._sentence_window = SentenceWindow(window_size=2)
+        self._incremental = IncrementalManager(self)
 
         # Bookkeeping
         self._doc_counter = 0
@@ -129,12 +134,75 @@ class DenseForge:
         return ids
 
     def ingest_batch(self, documents: list[dict]) -> int:
-        """Ingest multiple documents.  Each dict must have a 'text' key."""
-        total_chunks = 0
+        """Ingest multiple documents with batched encoding for speed.
+
+        Each dict must have a 'text' key. Optional: 'title', 'metadata'.
+        """
+        import time as _time
+        t0 = _time.perf_counter()
+
+        all_chunks = []
+        all_augmented = []
+        all_metadatas = []
+
         for doc in documents:
-            ids = self.ingest(doc["text"], metadata=doc.get("metadata"))
-            total_chunks += len(ids)
-        return total_chunks
+            meta = doc.get("metadata") or {}
+            if doc.get("title"):
+                meta["title"] = doc["title"]
+
+            # Dedup check
+            if hasattr(self, 'deduplicator') and self.deduplicator is not None:
+                import hashlib
+                content_hash = hashlib.sha256(doc["text"].strip().lower().encode()).hexdigest()[:16]
+                if content_hash in self.deduplicator._hashes:
+                    continue
+                self.deduplicator.add(f"doc_{self._doc_counter}", doc["text"])
+
+            chunks = self.chunker.split(doc["text"], title=meta.get("title", ""))
+            augmented = self.augmenter.augment(chunks)
+
+            for c in augmented:
+                all_chunks.append(c)
+                all_augmented.append(c["augmented"])
+                all_metadatas.append({**meta, "chunk_idx": c["chunk_idx"]})
+
+        if not all_chunks:
+            return 0
+
+        # Single batch encode for ALL chunks — 5-10x faster than per-doc
+        texts = [c["augmented"] for c in all_chunks]
+        embed_results = self.embedder.encode_batch(texts)
+        embeddings = np.array([e.vectors[self.config.embedding.default_dim] for e in embed_results])
+        binary_vecs = np.array([e.binary for e in embed_results])
+
+        ids = self.triple_store.add_batch(
+            texts=[c["text"] for c in all_chunks],
+            augmented_texts=texts,
+            embeddings=embeddings,
+            binary_vecs=binary_vecs,
+            metadatas=all_metadatas,
+        )
+
+        self.raptor.add_incremental_batch(texts, embeddings)
+
+        for chunk_text, meta in zip([c["text"] for c in all_chunks], all_metadatas):
+            doc_id = f"doc_{self._doc_counter}"
+            self.hippo.index_document(chunk_text, doc_id)
+            self._doc_counter += 1
+
+        # Columnar metadata
+        self.columnar_meta.add(
+            doc_id=f"batch_{self._doc_counter}",
+            timestamp=int(_time.time()),
+            source=documents[0].get("metadata", {}).get("source", ""),
+            title_hash=hash(documents[0].get("text", "")[:64]),
+            embedding_hash=hash(embeddings[0].tobytes()) if len(embeddings) > 0 else 0,
+        )
+
+        elapsed = _time.perf_counter() - t0
+        self._total_ingest_time += elapsed
+        logger.info("Batch ingested {} docs → {} chunks in {:.3f}s", len(documents), len(ids), elapsed)
+        return len(ids)
 
     def ingest_stream(self, doc: dict, flush_threshold: int = 32):
         """Buffer a document and flush when threshold is reached."""
@@ -151,10 +219,26 @@ class DenseForge:
     # Retrieval
     # ------------------------------------------------------------------
     def query(self, question: str, top_k: int | None = None,
-              channels: list[str] | None = None) -> dict:
-        """End-to-end query: cache → retrieve → format results."""
+              channels: list[str] | None = None,
+              filters: dict | None = None,
+              use_sentence_window: bool = False) -> dict:
+        """End-to-end query: cache → retrieve → format results.
+        
+        Args:
+            question: Search query
+            top_k: Number of results to return
+            channels: Which search channels to use (dense, sparse, binary)
+            filters: Metadata filters (e.g., {"source": {"$eq": "github"}})
+            use_sentence_window: Expand top result with surrounding chunks
+        
+        Returns:
+            Query results with context, sources, and timing
+        """
         t0 = time.perf_counter()
         top_k = top_k or self.config.retrieval.top_k
+        
+        # Build metadata filter
+        meta_filter = MetadataFilter(filters) if filters else None
 
         # Check cache first
         q_emb_result = self.embedder.encode(question, task="retrieval")
@@ -170,6 +254,29 @@ class DenseForge:
             query=question, query_embedding=q_vec, query_full=q_full, top_k=top_k,
             channels=channels,
         )
+        
+        # Apply metadata filters if provided (from Qdrant/Chroma)
+        if meta_filter:
+            results = [
+                r for r in results
+                if meta_filter.match(r.get("metadata", {}))
+            ]
+        
+        # Sentence window expansion (from LlamaIndex)
+        if use_sentence_window and results:
+            # Find top match index in triple store
+            top_text = results[0]["text"]
+            for i, chunk in enumerate(self.triple_store.texts):
+                if chunk == top_text:
+                    expanded = self._sentence_window.expand(
+                        [{"text": t, "metadata": m or {}} 
+                         for t, m in zip(self.triple_store.texts, self.triple_store.metadata)],
+                        [i],
+                        max_chunks=top_k * 2,
+                    )
+                    # Use expanded results
+                    results = expanded[:top_k]
+                    break
 
         # Augment with RAPTOR for hierarchical context
         raptor_results = self.raptor.search(q_vec, top_k=min(3, top_k))
@@ -211,6 +318,34 @@ class DenseForge:
         self.cache.put(question, q_vec, response)
         return response
 
+    # ------------------------------------------------------------------
+    # Incremental updates (from Chroma)
+    # ------------------------------------------------------------------
+    def upsert(self, doc_id: str, text: str, metadata: dict | None = None) -> dict:
+        """Add or update a document incrementally.
+        
+        Args:
+            doc_id: Unique document identifier
+            text: Document text
+            metadata: Optional metadata
+            
+        Returns:
+            {"action": "added"|"updated", "doc_id": str, "version": int}
+        """
+        return self._incremental.upsert(doc_id, text, metadata)
+    
+    def delete(self, doc_id: str) -> bool:
+        """Delete a document by ID.
+        
+        Returns:
+            True if document was found and marked for deletion
+        """
+        return self._incremental.delete(doc_id)
+    
+    def list_documents(self) -> list[str]:
+        """List all tracked document IDs."""
+        return self._incremental.list_documents()
+    
     # ------------------------------------------------------------------
     # Stats & persistence
     # ------------------------------------------------------------------

@@ -370,3 +370,141 @@ class TestRRFFusion:
 
         for doc_id, score in fused.items():
             assert score > 0, f"Score for doc {doc_id} should be positive, got {score}"
+
+
+# ── Advanced: MetadataFilter ────────────────────────────────────────────────
+
+class TestMetadataFilter:
+    def test_eq_filter(self):
+        from denseforge.retrieval.advanced import MetadataFilter
+        f = MetadataFilter({"source": {"$eq": "github"}})
+        assert f.match({"source": "github"})
+        assert not f.match({"source": "web"})
+
+    def test_gt_filter(self):
+        from denseforge.retrieval.advanced import MetadataFilter
+        f = MetadataFilter({"score": {"$gt": 5}})
+        assert f.match({"score": 10})
+        assert not f.match({"score": 3})
+
+    def test_contains_list(self):
+        from denseforge.retrieval.advanced import MetadataFilter
+        f = MetadataFilter({"tags": {"$contains": "python"}})
+        assert f.match({"tags": ["python", "ml"]})
+        assert not f.match({"tags": ["js"]})
+
+    def test_contains_string(self):
+        from denseforge.retrieval.advanced import MetadataFilter
+        f = MetadataFilter({"text": {"$contains": "hello"}})
+        assert f.match({"text": "hello world"})
+        assert not f.match({"text": "goodbye"})
+
+    def test_in_operator(self):
+        from denseforge.retrieval.advanced import MetadataFilter
+        f = MetadataFilter({"source": {"$in": ["github", "web"]}})
+        assert f.match({"source": "github"})
+        assert not f.match({"source": "email"})
+
+    def test_multi_filter(self):
+        from denseforge.retrieval.advanced import MetadataFilter
+        f = MetadataFilter({"source": {"$eq": "github"}, "tags": {"$contains": "python"}})
+        assert f.match({"source": "github", "tags": ["python"]})
+        assert not f.match({"source": "web", "tags": ["python"]})
+
+    def test_missing_field(self):
+        from denseforge.retrieval.advanced import MetadataFilter
+        f = MetadataFilter({"source": {"$eq": "github"}})
+        assert not f.match({})
+
+
+# ── Advanced: SentenceWindow ────────────────────────────────────────────────
+
+class TestSentenceWindow:
+    def test_expand_basic(self):
+        from denseforge.retrieval.advanced import SentenceWindow
+        sw = SentenceWindow(window_size=1)
+        chunks = [{"text": f"chunk_{i}", "chunk_idx": i} for i in range(5)]
+        result = sw.expand(chunks, [2], max_chunks=10)
+        texts = [r["text"] for r in result]
+        assert "chunk_1" in texts
+        assert "chunk_2" in texts
+        assert "chunk_3" in texts
+
+    def test_expand_marks_match(self):
+        from denseforge.retrieval.advanced import SentenceWindow
+        sw = SentenceWindow(window_size=1)
+        chunks = [{"text": f"chunk_{i}", "chunk_idx": i} for i in range(5)]
+        result = sw.expand(chunks, [2])
+        match = [r for r in result if r.get("_is_match")]
+        assert len(match) == 1
+
+    def test_expand_limit(self):
+        from denseforge.retrieval.advanced import SentenceWindow
+        sw = SentenceWindow(window_size=3)
+        chunks = [{"text": f"chunk_{i}", "chunk_idx": i} for i in range(20)]
+        result = sw.expand(chunks, [10], max_chunks=5)
+        assert len(result) == 5
+
+    def test_empty_input(self):
+        from denseforge.retrieval.advanced import SentenceWindow
+        sw = SentenceWindow(window_size=2)
+        assert sw.expand([], [0]) == []
+
+    def test_center_chunk(self):
+        from denseforge.retrieval.advanced import SentenceWindow
+        sw = SentenceWindow(window_size=1)
+        chunks = [{"text": f"chunk_{i}"} for i in range(5)]
+        ctx = sw.get_center_chunk(chunks, 2)
+        assert ctx["center"]["text"] == "chunk_2"
+        assert len(ctx["before"]) == 1
+        assert len(ctx["after"]) == 1
+
+
+# ── Advanced: IncrementalManager ────────────────────────────────────────────
+
+class TestIncrementalManager:
+    def test_upsert_adds(self):
+        from denseforge.retrieval.advanced import IncrementalManager
+        # Create a proper mock forge
+        class MockForge:
+            def __init__(self):
+                self._doc_versions = {}
+            def ingest(self, text, metadata=None):
+                return [1, 2]
+        forge = MockForge()
+        mgr = IncrementalManager(forge)
+        result = mgr.upsert("doc1", "Hello world")
+        assert result["action"] == "added"
+        assert result["version"] == 1
+
+    def test_upsert_updates(self):
+        from denseforge.retrieval.advanced import IncrementalManager
+        class MockTripleStore:
+            metadata = []
+        class MockForge:
+            def __init__(self):
+                self._doc_versions = {}
+                self.triple_store = MockTripleStore()
+            def ingest(self, text, metadata=None):
+                return [1]
+        forge = MockForge()
+        mgr = IncrementalManager(forge)
+        mgr.upsert("doc1", "v1")
+        result = mgr.upsert("doc1", "v2")
+        assert result["action"] == "updated"
+        assert result["version"] == 2
+
+    def test_list_documents(self):
+        from denseforge.retrieval.advanced import IncrementalManager
+        class MockForge:
+            def __init__(self):
+                self._doc_versions = {}
+            def ingest(self, text, metadata=None):
+                return [1]
+        forge = MockForge()
+        mgr = IncrementalManager(forge)
+        mgr.upsert("a", "text a")
+        mgr.upsert("b", "text b")
+        docs = mgr.list_documents()
+        assert "a" in docs
+        assert "b" in docs
