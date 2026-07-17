@@ -1,5 +1,5 @@
 """Holistic Cost Optimizer — end-to-end budget allocation."""
-from typing import Dict, List
+from typing import Dict
 
 
 class HolisticCostOptimizer:

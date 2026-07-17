@@ -5,7 +5,7 @@ Delta encoding: stores only differences between similar documents.
 """
 import hashlib
 import numpy as np
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional
 
 
 class SemanticDeduplicator:

@@ -1,6 +1,5 @@
 """Continual Learning with EWC (Elastic Weight Consolidation)."""
 import numpy as np
-from typing import Optional
 from loguru import logger
 
 

@@ -6,7 +6,7 @@ Much faster for filtering and aggregate queries.
 import json
 import os
 import numpy as np
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 from pathlib import Path
 
 

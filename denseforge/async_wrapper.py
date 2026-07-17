@@ -5,7 +5,7 @@ for use in high-performance async web applications.
 """
 import asyncio
 import logging
-from typing import Any, Optional
+from typing import Optional
 from functools import partial
 
 logger = logging.getLogger("denseforge.async")

@@ -1,7 +1,6 @@
 """Carbon-Aware Scheduler — defer compute to low-carbon periods."""
 import time
 from typing import Optional
-from loguru import logger
 
 
 class CarbonAwareScheduler:

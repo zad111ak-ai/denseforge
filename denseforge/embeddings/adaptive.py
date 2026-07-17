@@ -1,11 +1,11 @@
 """Adaptive Matryoshka Embeddings with quality-aware dimension selection."""
 import numpy as np
-from typing import Optional
+from typing import Optional, Any
 from dataclasses import dataclass
 from threading import Lock
 
 # Global model cache — share across all AdaptiveEmbedder instances
-_MODEL_CACHE: dict[str, "SentenceTransformer"] = {}
+_MODEL_CACHE: dict[str, Any] = {}
 _MODEL_CACHE_LOCK = Lock()
 
 

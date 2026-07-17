@@ -1,6 +1,4 @@
 """RAGAS Evaluation — quality metrics for RAG systems."""
-from typing import Optional
-from loguru import logger
 
 
 class RAGASEvaluator:

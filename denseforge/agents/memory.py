@@ -1,11 +1,10 @@
 """ThreeTierMemory — Episodic + Semantic + Procedural memory for agents."""
 from __future__ import annotations
 
-import hashlib
 import time
 import uuid
 from collections import defaultdict
-from typing import Callable, Optional
+from typing import Optional
 
 import numpy as np
 from loguru import logger

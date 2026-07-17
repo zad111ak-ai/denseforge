@@ -1,5 +1,4 @@
 """CAG — Cache-Augmented Generation for small knowledge bases."""
-from typing import Optional
 
 
 class CAGEngine:

@@ -1,6 +1,4 @@
 """Dynamic Agent Spawning — on-demand agent creation."""
-import asyncio
-from typing import Optional
 from loguru import logger
 
 

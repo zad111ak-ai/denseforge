@@ -1,7 +1,5 @@
 """RAPTOR Tree — hierarchical clustering for multi-hop retrieval."""
 import numpy as np
-from typing import Optional
-from loguru import logger
 
 
 class RaptorTree:

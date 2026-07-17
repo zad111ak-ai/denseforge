@@ -1,7 +1,5 @@
 """HippoRAG — PageRank on knowledge graph for long-term memory."""
 import networkx as nx
-from typing import Optional
-from loguru import logger
 
 
 class HippoRAG:

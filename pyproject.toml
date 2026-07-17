@@ -35,6 +35,7 @@ dependencies = [
     "httpx>=0.25.0",
     "tenacity>=8.2.0",
     "tqdm>=4.66.0",
+    "mcp>=1.0",
 ]
 
 [project.optional-dependencies]
@@ -51,6 +52,7 @@ all = ["denseforge[gpu,models,enterprise,dev]"]
 
 [project.scripts]
 denseforge = "denseforge.cli:main"
+denseforge-mcp = "denseforge.mcp_server:cli"
 
 [tool.setuptools.packages.find]
 include = ["denseforge*"]

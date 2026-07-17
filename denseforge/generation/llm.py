@@ -1,9 +1,7 @@
 """LLM Generation — completions with source attribution and speculative drafts."""
 from __future__ import annotations
 
-import json
 import time
-from typing import Optional, Callable
 
 import httpx
 from loguru import logger

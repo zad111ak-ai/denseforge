@@ -6,8 +6,6 @@ Implements state-of-the-art retrieval improvements:
 3. ColBERT Late Interaction — better token-level matching
 """
 import time
-import numpy as np
-from typing import Any, Optional
 from dataclasses import dataclass
 from loguru import logger
 

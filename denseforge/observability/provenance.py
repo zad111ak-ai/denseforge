@@ -1,6 +1,5 @@
 """Retrieval Provenance — track the full chain from query to answer."""
 from typing import Optional
-from loguru import logger
 
 
 class RetrievalProvenanceGraph:

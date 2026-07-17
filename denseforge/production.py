@@ -6,7 +6,6 @@ Security features for production deployment:
 3. Audit logging (GDPR compliance)
 4. Read-only mode (safe production)
 """
-import os
 import ssl
 import time
 import json
@@ -15,7 +14,6 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 from enum import Enum
-from functools import wraps
 
 logger = logging.getLogger("denseforge.production")
 
@@ -65,7 +63,6 @@ class TLSConfig:
     def generate_self_signed(cls, output_dir: str) -> 'TLSConfig':
         """Generate self-signed certificate for development."""
         import subprocess
-        import tempfile
         
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)

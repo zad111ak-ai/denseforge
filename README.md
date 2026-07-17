@@ -1,8 +1,20 @@
-# DenseForge
+# 🧠 DenseForge — Semantic Memory for AI Agents
 
-**Semantic memory platform for AI agents.**
+<p align="center">
+  <em>The missing memory layer for AI agents.</em><br>
+  <strong>Store → Search → Reason → Remember</strong>
+</p>
 
-DenseForge is a local knowledge base that gives AI agents persistent, searchable memory. It stores text, finds relevant context, and returns it with source citations — like a search engine built specifically for LLM conversations.
+<p align="center">
+  <a href="https://github.com/zad111ak-ai/denseforge"><img src="https://img.shields.io/github/stars/zad111ak-ai/denseforge?style=social" alt="GitHub Stars"></a>
+  <a href="https://pypi.org/project/denseforge/"><img src="https://img.shields.io/pypi/v/denseforge" alt="PyPI"></a>
+  <img src="https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python" alt="Python 3.10+">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
+</p>
+
+DenseForge is a **local semantic memory platform** for AI agents. It stores text, finds relevant context, and returns it with source citations — like a search engine built specifically for LLM conversations.
+
+**Part of [Harvest](https://github.com/zad111ak-ai/harvest)** — a web scraping toolkit for AI agents. DenseForge adds persistent memory to Harvest's scraping pipeline. Install separately if you need semantic memory.
 
 ## What It Actually Does
 
@@ -134,6 +146,11 @@ Triple Search:
 pip install denseforge
 ```
 
+### With Harvest (optional)
+```bash
+pip install harvest-agent[denseforge]
+```
+
 Or from source:
 
 ```bash
@@ -157,6 +174,23 @@ forge.ingest("Apple announced iPhone 16 at $999", title="iPhone 16")
 # Search
 results = forge.search("What phone did Apple announce?")
 print(results)  # Returns matching chunks with scores
+```
+
+### With Harvest — Scrape → Memory → Search
+```python
+from harvest import Harvest
+from harvest.integrations.denseforge import DenseForgeBridge
+
+# Scrape the web
+h = Harvest()
+result = h.scrape("https://docs.python.org/3/tutorial")
+
+# Store in semantic memory
+bridge = DenseForgeBridge()
+bridge.store(result.markdown, metadata={"source": result.url})
+
+# Search later — agent remembers everything
+results = bridge.search("how to use classes")
 ```
 
 ### CLI
@@ -190,6 +224,32 @@ hermes tools enable knowledge
 /skill denseforge-memory
 ```
 
+### MCP Integration
+
+DenseForge exposes 8 tools via MCP for AI agents:
+
+| Tool | Description |
+|------|-------------|
+| `denseforge_ingest` | Store text with embeddings |
+| `denseforge_search` | Semantic search |
+| `denseforge_ask_why` | Causal reasoning |
+| `denseforge_ask_what_if` | Counterfactual analysis |
+| `denseforge_stats` | Database statistics |
+| `denseforge_list_documents` | List stored documents |
+| `harvest_scrape` | Scrape a URL (via Harvest) |
+| `harvest_contacts` | Extract contacts (via Harvest) |
+
+```json
+{
+  "mcpServers": {
+    "denseforge-mcp": {
+      "command": "denseforge-mcp",
+      "args": []
+    }
+  }
+}
+```
+
 ## Metrics (Measured, Not Claimed)
 
 These numbers are from actual testing, not theoretical maximums:
@@ -204,7 +264,7 @@ These numbers are from actual testing, not theoretical maximums:
 | Cache hit rate | 75% | After warmup period |
 | Ingestion speed | 50 docs/sec | CPU-only, 7.7GB RAM |
 | Query latency | 160ms | Triple hybrid search |
-| Test coverage | 32/32 passing | pytest |
+| Test coverage | 173/175 passing | pytest |
 
 **What we DON'T claim:**
 - ❌ "90% token savings" — real savings depend on your setup
@@ -241,7 +301,7 @@ denseforge/
 ## Testing
 
 ```bash
-pytest tests/ -v  # 32/32 passing
+pytest tests/ -v  # 173/175 passing
 ```
 
 ## License
@@ -268,4 +328,8 @@ Built on:
 
 ---
 
-**Local-first AI memory. No cloud. No vendor lock-in.**
+---
+
+<p align="center">
+  <strong>🧠 DenseForge — Your AI agent remembers everything.</strong>
+</p>

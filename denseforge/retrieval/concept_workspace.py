@@ -9,10 +9,8 @@ Key insight: effective retrieval needs CONCEPT PRECISION, not just score.
 """
 import re
 import numpy as np
-from typing import Optional
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from loguru import logger
 
 
 @dataclass

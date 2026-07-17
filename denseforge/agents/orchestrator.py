@@ -5,7 +5,7 @@ import asyncio
 import json
 import time
 import uuid
-from typing import Any, Callable
+from typing import Callable
 
 from loguru import logger
 
